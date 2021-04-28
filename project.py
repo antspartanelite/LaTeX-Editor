@@ -33,7 +33,11 @@ def updateDisplayBox(displayBox, texFilePath):
     print(scrollPos)
     errorStatus = os.system("pdflatex -jobname=cachedPDFN -halt-on-error "+texFilePath)
     if(errorStatus == 0):
-        os.rename("cachedPDFN.pdf","cachedPDF.pdf")
+        try:
+            os.remove("cachedPDF.pdf")
+            os.rename("cachedPDFN.pdf","cachedPDF.pdf")
+        except:
+            os.rename("cachedPDFN.pdf","cachedPDF.pdf")
     displayBox.configure(state="normal")
     displayBox.delete("1.0", END)
     # Here the PDF is converted to list of images
