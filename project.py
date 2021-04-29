@@ -6,20 +6,35 @@ from tkinter import filedialog
 from PIL import Image,ImageTk
 from pdf2image import convert_from_path
 
-texFilePath = "my_file.tex"
+texFilePath = False
 
 has_prev_key_release = None
+
+try:
+    os.remove("cachedPDF.pdf")
+except:
+    print("No pdf")
 
 def newDocument():
     textBox.delete("1.0", END)
     displayBox.configure(state="normal")
     displayBox.delete("1.0", END)
     displayBox.configure(state="disabled")
+    global texFilePath
+    texFilePath = False
+
+    try:
+        os.remove("cachedPDF.pdf")
+    except:
+        print("No pdf")
 
 def openDocument():  
-    latexFile = filedialog.askopenfilename(filetypes=(("TeX Files", "*.tex"),))
+    global texFilePath
+    tmp = texFilePath
+    texFilePath = filedialog.askopenfilename(filetypes=(("TeX Files", "*.tex"),))
     
-    if len(latexFile) == 0:
+    if len(texFilePath) == 0:
+        texFilePath = tmp
         return
     
     textBox.delete("1.0", END)
@@ -27,13 +42,39 @@ def openDocument():
     displayBox.delete("1.0", END)
     displayBox.configure(state="disabled")
 
-    latexFile = open(latexFile, "r")
-    content = latexFile.read()
+    texFile = open(texFilePath, "r")
+    content = texFile.read()
 
     textBox.insert(END, content)
-    latexFile.close()
-    updateTexFile(textBox, "my_file.tex", displayBox)
+    texFile.close()
+
+    try:
+        os.remove("cachedPDF.pdf")
+    except:
+        print("No pdfn")
     
+    updateTexFile(textBox, "my_file.tex", displayBox)
+
+def saveAs():
+    global texFilePath
+    texFilePath = filedialog.asksaveasfilename(defaultextension=".tex", title = "New File", filetypes=(("TeX Files","*.tex"),))
+    
+    if len(texFilePath) == 0:
+        texFilePath = False
+        return
+
+    texFile = open(texFilePath, 'w')
+    texFile.write(textBox.get("1.0",END))
+    texFile.close()
+
+def save():
+    global texFilePath
+    if texFilePath == False:
+        saveAs()
+    else:
+        texFile = open(texFilePath, 'w')
+        texFile.write(textBox.get("1.0",END))
+        texFile.close()
 
 def on_key_release(textBox, texFilePath, displayBox):
     global has_prev_key_release
@@ -50,12 +91,14 @@ def updateTexFile(textBox, texFilePath, displayBox):
     f.write(textBox.get("1.0", END))
     f.close()
     displayBox.configure(state="disabled")
-    updateDisplayBox(displayBox, "cachedTeX.tex")
+    if(len(textBox.get("1.0", END)) != 1):
+        updateDisplayBox(displayBox, "cachedTeX.tex")
 
 
 def updateDisplayBox(displayBox, texFilePath):
     scrollPos = displayBox.yview()
     print(scrollPos)
+    print(texFilePath)
     errorStatus = os.system("pdflatex -jobname=cachedPDFN -halt-on-error "+texFilePath)
     if(errorStatus == 0):
         try:
@@ -117,21 +160,11 @@ pdfScrollY.config(command=displayBox.yview)
 
 
 displayBox.pack(side=tk.RIGHT,padx=10)
-textBox.bind("<KeyRelease>", lambda event, arg=(0): on_key_release_repeat(textBox, texFilePath, displayBox)) 
-
-f = open(texFilePath)
-content = f.readlines()
-
-content = "".join(content)
-
-textBox.insert("1.0",content)
-
-f.close()
+textBox.bind("<KeyRelease>", lambda event, arg=(0): on_key_release_repeat(textBox, texFilePath, displayBox))
 
 
 displayBox.configure(state="disabled")
 
-updateDisplayBox(displayBox, texFilePath)
 
 myMenu = Menu(window)
 window.config(menu = myMenu)
@@ -140,8 +173,8 @@ fileMenu = Menu(myMenu)
 myMenu.add_cascade(label="File",menu=fileMenu)
 fileMenu.add_command(label="New", command=newDocument)
 fileMenu.add_command(label="Open", command=openDocument)
-fileMenu.add_command(label="Save")
-fileMenu.add_command(label="Save As")
+fileMenu.add_command(label="Save", command=save)
+fileMenu.add_command(label="Save As", command=saveAs)
 fileMenu.add_command(label="Export")
 
 editMenu = Menu(myMenu)
