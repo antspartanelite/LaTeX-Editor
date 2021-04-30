@@ -76,6 +76,12 @@ def save():
         texFile.write(textBox.get("1.0",END))
         texFile.close()
 
+def export():
+    updateDisplayBox(displayBox, "cachedTeX.tex")
+    filePath = filedialog.asksaveasfilename(defaultextension=".pdf", title = "New File", filetypes=(("PDF Files","*.pdf"),))
+    os.rename("cachedPDF.pdf", filePath)
+    updateDisplayBox(displayBox, "cachedTeX.tex")
+
 def on_key_release(textBox, texFilePath, displayBox):
     global has_prev_key_release
     has_prev_key_release = None
@@ -175,7 +181,7 @@ fileMenu.add_command(label="New", command=newDocument)
 fileMenu.add_command(label="Open", command=openDocument)
 fileMenu.add_command(label="Save", command=save)
 fileMenu.add_command(label="Save As", command=saveAs)
-fileMenu.add_command(label="Export")
+fileMenu.add_command(label="Export", command=export)
 
 editMenu = Menu(myMenu)
 myMenu.add_cascade(label="Edit",menu=editMenu)
