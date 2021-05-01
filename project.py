@@ -2,12 +2,17 @@ import os
 import time
 from tkinter import *
 from tkinter import filedialog
+import tkinter.messagebox
 from PIL import Image,ImageTk
 from pdf2image import convert_from_path
 
 texFilePath = False
 
 has_prev_key_release = None
+
+liveRender = False
+
+waitingList = []
 
 try:
     os.remove("cachedPDF.pdf")
@@ -53,6 +58,10 @@ def openDocument():
         print("No pdfn")
     
     updateTexFile(textBox, "my_file.tex", displayBox)
+    if(len(textBox.get("1.0", END)) != 1):
+        updateDisplayBox(displayBox, "cachedTeX.tex")
+        
+    
 
 def saveAs():
     global texFilePath
@@ -95,14 +104,35 @@ def export():
 def redo():
     textBox.edit_redo()
 
-def on_key_release(textBox, texFilePath, displayBox):
-    global has_prev_key_release
-    has_prev_key_release = None
-    updateTexFile(textBox, texFilePath, displayBox)
 
-def on_key_release_repeat(textBox, texFilePath, displayBox):
-    global has_prev_key_release
-    has_prev_key_release = textBox.after_idle(on_key_release, textBox, texFilePath, displayBox)
+def renderPDF():
+    if liveRender:
+        updateTexFile(textBox, texFilePath, displayBox)
+    else:
+        if(len(textBox.get("1.0", END)) != 1):
+            updateDisplayBox(displayBox, "cachedTeX.tex")
+
+def toggleAutoRender():
+    if os.name == 'nt':
+        tkinter.messagebox.showinfo('Denied','Due to performance issues auto rendering is disabled for windows')
+    else:
+        if liveRender:
+            tkinter.messagebox.showinfo('Message','Auto rendering of the target pdf has been disabled')
+        else:
+            result=tkinter.messagebox.askquestion('Warning','Enabling auto rendering may cause performance issues are you sure you wish to continue?')
+            if result=='yes':
+                liveRender = True
+
+def onKeyRelease(textBox, texFilePath, displayBox):
+    global waitingList
+    waitingList.append(1)
+    textBox.after(500, updateCheck, textBox, texFilePath, displayBox)
+
+def updateCheck(textBox, texFilePath, displayBox):
+    global waitingList
+    waitingList.pop()
+    if len(waitingList) == 0:
+        updateTexFile(textBox, texFilePath, displayBox)
 
 
 def updateTexFile(textBox, texFilePath, displayBox):
@@ -110,7 +140,7 @@ def updateTexFile(textBox, texFilePath, displayBox):
     f.write(textBox.get("1.0", END))
     f.close()
     displayBox.configure(state="disabled")
-    if(len(textBox.get("1.0", END)) != 1):
+    if(len(textBox.get("1.0", END)) != 1 and liveRender):
         updateDisplayBox(displayBox, "cachedTeX.tex")
 
 
@@ -125,6 +155,8 @@ def updateDisplayBox(displayBox, texFilePath):
             os.rename("cachedPDFN.pdf","cachedPDF.pdf")
         except:
             os.rename("cachedPDFN.pdf","cachedPDF.pdf")
+    else:
+        tkinter.messagebox.showinfo('Message','Unable to render PDF please check that your syntax is correct')
     displayBox.configure(state="normal")
     displayBox.delete("1.0", END)
     # Here the PDF is converted to list of images
@@ -153,11 +185,11 @@ def updateDisplayBox(displayBox, texFilePath):
 
 window = Tk()
 window.title("Python LaTeX editor")
-window.geometry("1620x700")
+window.geometry("1700x800")
 window.bind_all("<Control-s>", lambda x: save())
 
 textFrame = Frame(window)
-textFrame.pack(pady=10)
+
 
 # Adding Scrollbar to the text frame
 textScrollY = Scrollbar(textFrame,orient=VERTICAL)
@@ -168,15 +200,27 @@ pdfScrollY = Scrollbar(textFrame,orient=VERTICAL)
 horizontalScroll = Scrollbar(textFrame, orient=HORIZONTAL)
 
 #Sets height of texboxes relative to font
-textBox = Text(textFrame, width=88, height=33, font=("Helvetica", 12), yscrollcommand = textScrollY.set, xscrollcommand = horizontalScroll.set, selectbackground="blue", selectforeground="white", undo=True, wrap="none")
-textBox.pack(side=LEFT,padx=10)
+textBox = Text(textFrame, width=88, height=53, font=("Helvetica", 12), yscrollcommand = textScrollY.set, xscrollcommand = horizontalScroll.set, selectbackground="blue", selectforeground="white", undo=True, wrap="none")
 
+
+toolbar = Frame(window, bd=1, relief=RAISED)
+renderImg = ImageTk.PhotoImage(Image.open("cog2.png").resize((40, 50)))
+renderButton = Button(toolbar, image=renderImg, relief=FLAT, command=renderPDF)
+renderButton.image = renderImg
+renderButton.pack(side=LEFT, padx=2, pady=2)
+toolbar.pack(side=TOP, fill=X)
+
+
+textFrame.pack(pady=10)
 horizontalScroll.pack(side=BOTTOM, fill=X)
 horizontalScroll.config(command=textBox.xview)
+textBox.pack(side=LEFT,padx=10)
 
-displayBox = Text(textFrame, width=66, height=25, font=("Helvetica", 16), yscrollcommand = pdfScrollY.set, selectbackground="yellow", selectforeground="black", bg="grey")
+displayBox = Text(textFrame, width=66, height=40, font=("Helvetica", 16), yscrollcommand = pdfScrollY.set, selectbackground="yellow", selectforeground="black", bg="grey")
 
 displayBox.configure(state="disabled")
+
+
 
 # Setting the scrollbar to the right side of each frame
 textScrollY.pack(side=LEFT,fill=Y)
@@ -185,12 +229,8 @@ pdfScrollY.pack(side=RIGHT,fill=Y)
 pdfScrollY.config(command=displayBox.yview)
 
 
-
-
-
-
 displayBox.pack(side=RIGHT,padx=10)
-textBox.bind("<KeyRelease>", lambda event, arg=(0): on_key_release_repeat(textBox, texFilePath, displayBox))
+textBox.bind("<KeyRelease>", lambda event, arg=(0): onKeyRelease(textBox, texFilePath, displayBox))
 textBox.bind("<Control-y>", lambda x: redo())
 
 
@@ -216,6 +256,74 @@ editMenu.add_command(label="Redo", command=textBox.edit_redo, accelerator="(Ctrl
 editMenu.add_command(label="Cut", command=cut, accelerator="(Ctrl+x)")
 editMenu.add_command(label="Copy", command=copy, accelerator="(Ctrl+c)")
 editMenu.add_command(label="Paste",command=paste, accelerator="(Ctrl+v)")
+
+
+insertMenu = Menu(myMenu)
+myMenu.add_cascade(label="Insert",menu=insertMenu)
+lowerGreekMenu = Menu(insertMenu)
+upperGreekMenu = Menu(insertMenu)
+insertMenu.add_cascade(label="Lowercase Greek", menu=lowerGreekMenu)
+
+def printSymbol(text):
+    textBox.insert(INSERT, text)
+
+lowerGreekMenu.add_command(label="Alpha", command=lambda:printSymbol("\\alpha"))
+lowerGreekMenu.add_command(label="Beta", command=lambda:printSymbol("\\beta"))
+lowerGreekMenu.add_command(label="Gamma", command=lambda:printSymbol("\\gamma"))
+lowerGreekMenu.add_command(label="Delta", command=lambda:printSymbol("\\delta"))
+lowerGreekMenu.add_command(label="Epsilon", command=lambda:printSymbol("\\epsilon"))
+lowerGreekMenu.add_command(label="Zeta", command=lambda:printSymbol("\\zeta"))
+lowerGreekMenu.add_command(label="Eta", command=lambda:printSymbol("\\eta"))
+lowerGreekMenu.add_command(label="Theta", command=lambda:printSymbol("\\theta"))
+lowerGreekMenu.add_command(label="Iota", command=lambda:printSymbol("\\iota"))
+lowerGreekMenu.add_command(label="Kappa", command=lambda:printSymbol("\\kappa"))
+lowerGreekMenu.add_command(label="Lambda", command=lambda:printSymbol("\\lambda"))
+lowerGreekMenu.add_command(label="Mu", command=lambda:printSymbol("\\mu"))
+lowerGreekMenu.add_command(label="Nu", command=lambda:printSymbol("\\nu"))
+lowerGreekMenu.add_command(label="Xi", command=lambda:printSymbol("\\xi"))
+lowerGreekMenu.add_command(label="Omicron", command=lambda:printSymbol("o"))
+lowerGreekMenu.add_command(label="Pi", command=lambda:printSymbol("\\pi"))
+lowerGreekMenu.add_command(label="Rho", command=lambda:printSymbol("\\rho"))
+lowerGreekMenu.add_command(label="Sigma", command=lambda:printSymbol("\\sigma"))
+lowerGreekMenu.add_command(label="Tau", command=lambda:printSymbol("\\tau"))
+lowerGreekMenu.add_command(label="Upsilon", command=lambda:printSymbol("\\upsilon"))
+lowerGreekMenu.add_command(label="Phi", command=lambda:printSymbol("\\phi"))
+lowerGreekMenu.add_command(label="Chi", command=lambda:printSymbol("\\chi"))
+lowerGreekMenu.add_command(label="Psi", command=lambda:printSymbol("\\psi"))
+lowerGreekMenu.add_command(label="Omega", command=lambda:printSymbol("\\omega"))
+
+
+insertMenu.add_cascade(label="Uppercase Greek", menu=upperGreekMenu)
+
+upperGreekMenu.add_command(label="Alpha", command=lambda:printSymbol("A"))
+upperGreekMenu.add_command(label="Beta", command=lambda:printSymbol("B"))
+upperGreekMenu.add_command(label="Gamma", command=lambda:printSymbol("\\Gamma"))
+upperGreekMenu.add_command(label="Delta", command=lambda:printSymbol("\\Delta"))
+upperGreekMenu.add_command(label="Epsilon", command=lambda:printSymbol("E"))
+upperGreekMenu.add_command(label="Zeta", command=lambda:printSymbol("Z"))
+upperGreekMenu.add_command(label="Eta", command=lambda:printSymbol("H"))
+upperGreekMenu.add_command(label="Theta", command=lambda:printSymbol("\\Theta"))
+upperGreekMenu.add_command(label="Iota", command=lambda:printSymbol("I"))
+upperGreekMenu.add_command(label="Kappa", command=lambda:printSymbol("K"))
+upperGreekMenu.add_command(label="Lambda", command=lambda:printSymbol("\\Lambda"))
+upperGreekMenu.add_command(label="Mu", command=lambda:printSymbol("M"))
+upperGreekMenu.add_command(label="Nu", command=lambda:printSymbol("N"))
+upperGreekMenu.add_command(label="Xi", command=lambda:printSymbol("\\Xi"))
+upperGreekMenu.add_command(label="Omicron", command=lambda:printSymbol("O"))
+upperGreekMenu.add_command(label="Pi", command=lambda:printSymbol("\\Pi"))
+upperGreekMenu.add_command(label="Rho", command=lambda:printSymbol("P"))
+upperGreekMenu.add_command(label="Sigma", command=lambda:printSymbol("\\Sigma"))
+upperGreekMenu.add_command(label="Tau", command=lambda:printSymbol("T"))
+upperGreekMenu.add_command(label="Upsilon", command=lambda:printSymbol("\\Upsilon"))
+upperGreekMenu.add_command(label="Phi", command=lambda:printSymbol("\\Phi"))
+upperGreekMenu.add_command(label="Chi", command=lambda:printSymbol("X"))
+upperGreekMenu.add_command(label="Psi", command=lambda:printSymbol("\\Psi"))
+upperGreekMenu.add_command(label="Omega", command=lambda:printSymbol("\\Omega"))
+
+
+settingsMenu = Menu(myMenu)
+myMenu.add_cascade(label="Settings",menu=settingsMenu)
+settingsMenu.add_command(label="Toggle autorender", command=toggleAutoRender)
 
 
 window.mainloop()
