@@ -1,4 +1,3 @@
-import tkinter as tk
 import os
 import time
 from tkinter import *
@@ -76,11 +75,25 @@ def save():
         texFile.write(textBox.get("1.0",END))
         texFile.close()
 
+
+def cut():
+    textBox.event_generate('<Control-x>')
+
+def copy():
+    textBox.event_generate('<Control-c>')
+
+def paste():
+    textBox.event_generate('<Control-v>')
+    
+
 def export():
     updateDisplayBox(displayBox, "cachedTeX.tex")
     filePath = filedialog.asksaveasfilename(defaultextension=".pdf", title = "New File", filetypes=(("PDF Files","*.pdf"),))
     os.rename("cachedPDF.pdf", filePath)
     updateDisplayBox(displayBox, "cachedTeX.tex")
+
+def redo():
+    textBox.edit_redo()
 
 def on_key_release(textBox, texFilePath, displayBox):
     global has_prev_key_release
@@ -141,6 +154,7 @@ def updateDisplayBox(displayBox, texFilePath):
 window = Tk()
 window.title("Python LaTeX editor")
 window.geometry("1620x700")
+window.bind_all("<Control-s>", lambda x: save())
 
 textFrame = Frame(window)
 textFrame.pack(pady=10)
@@ -151,11 +165,18 @@ textScrollY = Scrollbar(textFrame,orient=VERTICAL)
 # Adding Scrollbar to the PDF frame
 pdfScrollY = Scrollbar(textFrame,orient=VERTICAL)
 
+horizontalScroll = Scrollbar(textFrame, orient=HORIZONTAL)
+
 #Sets height of texboxes relative to font
-textBox = Text(textFrame, width=88, height=33, font=("Helvetica", 12), yscrollcommand = textScrollY.set, selectbackground="blue", selectforeground="white")
-textBox.pack(side=tk.LEFT,padx=10)
+textBox = Text(textFrame, width=88, height=33, font=("Helvetica", 12), yscrollcommand = textScrollY.set, xscrollcommand = horizontalScroll.set, selectbackground="blue", selectforeground="white", undo=True, wrap="none")
+textBox.pack(side=LEFT,padx=10)
+
+horizontalScroll.pack(side=BOTTOM, fill=X)
+horizontalScroll.config(command=textBox.xview)
+
 displayBox = Text(textFrame, width=66, height=25, font=("Helvetica", 16), yscrollcommand = pdfScrollY.set, selectbackground="yellow", selectforeground="black", bg="grey")
 
+displayBox.configure(state="disabled")
 
 # Setting the scrollbar to the right side of each frame
 textScrollY.pack(side=LEFT,fill=Y)
@@ -165,8 +186,13 @@ pdfScrollY.config(command=displayBox.yview)
 
 
 
-displayBox.pack(side=tk.RIGHT,padx=10)
+
+
+
+displayBox.pack(side=RIGHT,padx=10)
 textBox.bind("<KeyRelease>", lambda event, arg=(0): on_key_release_repeat(textBox, texFilePath, displayBox))
+textBox.bind("<Control-y>", lambda x: redo())
+
 
 
 displayBox.configure(state="disabled")
@@ -179,17 +205,17 @@ fileMenu = Menu(myMenu)
 myMenu.add_cascade(label="File",menu=fileMenu)
 fileMenu.add_command(label="New", command=newDocument)
 fileMenu.add_command(label="Open", command=openDocument)
-fileMenu.add_command(label="Save", command=save)
+fileMenu.add_command(label="Save", command=save, accelerator="(Ctrl+s)")
 fileMenu.add_command(label="Save As", command=saveAs)
 fileMenu.add_command(label="Export", command=export)
 
 editMenu = Menu(myMenu)
 myMenu.add_cascade(label="Edit",menu=editMenu)
-editMenu.add_command(label="Undo")
-editMenu.add_command(label="Redo")
-editMenu.add_command(label="Cut")
-editMenu.add_command(label="Copy")
-editMenu.add_command(label="Paste")
+editMenu.add_command(label="Undo", command=textBox.edit_undo, accelerator="(Ctrl+z)")
+editMenu.add_command(label="Redo", command=textBox.edit_redo, accelerator="(Ctrl+y)")
+editMenu.add_command(label="Cut", command=cut, accelerator="(Ctrl+x)")
+editMenu.add_command(label="Copy", command=copy, accelerator="(Ctrl+c)")
+editMenu.add_command(label="Paste",command=paste, accelerator="(Ctrl+v)")
 
 
 window.mainloop()
