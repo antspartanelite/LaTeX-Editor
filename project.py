@@ -58,7 +58,8 @@ def openDocument():
         print("No pdfn")
     
     updateTexFile(textBox, "my_file.tex", displayBox)
-    if(len(textBox.get("1.0", END)) != 1):
+    print(len(textBox.get("1.0", END)))
+    if len(textBox.get("1.0", END)) > 2:
         updateDisplayBox(displayBox, "cachedTeX.tex")
         
     
