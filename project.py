@@ -97,10 +97,15 @@ def paste():
     
 
 def export():
-    updateDisplayBox(displayBox, "cachedTeX.tex")
-    filePath = filedialog.asksaveasfilename(defaultextension=".pdf", title = "New File", filetypes=(("PDF Files","*.pdf"),))
-    os.rename("cachedPDF.pdf", filePath)
-    updateDisplayBox(displayBox, "cachedTeX.tex")
+    global liveRender
+    try:
+        updateDisplayBox(displayBox, "cachedTeX.tex")
+        filePath = filedialog.asksaveasfilename(defaultextension=".pdf", title = "New File", filetypes=(("PDF Files","*.pdf"),))
+        os.rename("cachedPDF.pdf", filePath)
+        updateDisplayBox(displayBox, "cachedTeX.tex")
+    except:
+        if liveRender:
+            tkinter.messagebox.showinfo('Message','Unable to render PDF please check that your syntax is correct')
 
 def redo():
     textBox.edit_redo()
@@ -110,7 +115,7 @@ def renderPDF():
     if liveRender:
         updateTexFile(textBox, texFilePath, displayBox)
     else:
-        if(len(textBox.get("1.0", END)) != 1):
+        if(len(textBox.get("1.0", END)) > 2):
             updateDisplayBox(displayBox, "cachedTeX.tex")
 
 def toggleAutoRender():
@@ -143,7 +148,7 @@ def updateTexFile(textBox, texFilePath, displayBox):
     f.write(textBox.get("1.0", END))
     f.close()
     displayBox.configure(state="disabled")
-    if(len(textBox.get("1.0", END)) != 1 and liveRender):
+    if(len(textBox.get("1.0", END)) > 2 and liveRender):
         updateDisplayBox(displayBox, "cachedTeX.tex")
 
 
