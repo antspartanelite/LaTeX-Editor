@@ -113,11 +113,13 @@ def renderPDF():
             updateDisplayBox(displayBox, "cachedTeX.tex")
 
 def toggleAutoRender():
+    global liveRender
     if os.name == 'nt':
         tkinter.messagebox.showinfo('Denied','Due to performance issues auto rendering is disabled for windows')
     else:
         if liveRender:
             tkinter.messagebox.showinfo('Message','Auto rendering of the target pdf has been disabled')
+            liveRender = False
         else:
             result=tkinter.messagebox.askquestion('Warning','Enabling auto rendering may cause performance issues are you sure you wish to continue?')
             if result=='yes':
@@ -156,7 +158,8 @@ def updateDisplayBox(displayBox, texFilePath):
         except:
             os.rename("cachedPDFN.pdf","cachedPDF.pdf")
     else:
-        tkinter.messagebox.showinfo('Message','Unable to render PDF please check that your syntax is correct')
+        if liveRender == False:
+            tkinter.messagebox.showinfo('Message','Unable to render PDF please check that your syntax is correct')
     displayBox.configure(state="normal")
     displayBox.delete("1.0", END)
     # Here the PDF is converted to list of images
@@ -181,6 +184,11 @@ def updateDisplayBox(displayBox, texFilePath):
     displayBox.yview_moveto(scrollPos[0])
     displayBox.after(3, displayBox.yview_moveto, scrollPos[0])
 
+def printSymbol(text):
+    textBox.insert(INSERT, text)
+    updateTexFile(textBox, texFilePath, displayBox)
+    
+
 
 
 window = Tk()
@@ -204,10 +212,43 @@ textBox = Text(textFrame, width=88, height=53, font=("Helvetica", 12), yscrollco
 
 
 toolbar = Frame(window, bd=1, relief=RAISED)
+
 renderImg = ImageTk.PhotoImage(Image.open("cog2.png").resize((40, 50)))
+fractionImg = ImageTk.PhotoImage(Image.open("fraction.png").resize((40, 50)))
+superscriptImg = ImageTk.PhotoImage(Image.open("superscript.png").resize((40, 50)))
+subscriptImg = ImageTk.PhotoImage(Image.open("subscript.png").resize((40, 50)))
+sqrtImg = ImageTk.PhotoImage(Image.open("sqrt.png").resize((40, 50)))
+sumImg = ImageTk.PhotoImage(Image.open("sum.png").resize((40, 50)))
+integrationImg = ImageTk.PhotoImage(Image.open("integration.png").resize((40, 50)))
+
 renderButton = Button(toolbar, image=renderImg, relief=FLAT, command=renderPDF)
 renderButton.image = renderImg
 renderButton.pack(side=LEFT, padx=2, pady=2)
+
+fractionButton = Button(toolbar, image=fractionImg, relief=FLAT, command=lambda:printSymbol("\\frac{}{}"))
+fractionButton.image = fractionImg
+fractionButton.pack(side=LEFT, padx=2, pady=2)
+
+superscriptButton = Button(toolbar, image=superscriptImg, relief=FLAT, command=lambda:printSymbol("{}^{}"))
+superscriptButton.image = superscriptImg
+superscriptButton.pack(side=LEFT, padx=2, pady=2)
+
+subscriptButton = Button(toolbar, image=subscriptImg, relief=FLAT, command=lambda:printSymbol("{}_{}"))
+subscriptButton.image = superscriptImg
+subscriptButton.pack(side=LEFT, padx=2, pady=2)
+
+sqrtButton = Button(toolbar, image=sqrtImg, relief=FLAT, command=lambda:printSymbol("\\sqrt{}"))
+sqrtButton.image = sqrtImg
+sqrtButton.pack(side=LEFT, padx=2, pady=2)
+
+sumButton = Button(toolbar, image=sumImg, relief=FLAT, command=lambda:printSymbol("\\Sigma"))
+sumButton.image = sumImg
+sumButton.pack(side=LEFT, padx=2, pady=2)
+
+integrationButton = Button(toolbar, image=integrationImg, relief=FLAT, command=lambda:printSymbol("\\int"))
+integrationButton.image = integrationImg
+integrationButton.pack(side=LEFT, padx=2, pady=2)
+
 toolbar.pack(side=TOP, fill=X)
 
 
@@ -263,9 +304,6 @@ myMenu.add_cascade(label="Insert",menu=insertMenu)
 lowerGreekMenu = Menu(insertMenu)
 upperGreekMenu = Menu(insertMenu)
 insertMenu.add_cascade(label="Lowercase Greek", menu=lowerGreekMenu)
-
-def printSymbol(text):
-    textBox.insert(INSERT, text)
 
 lowerGreekMenu.add_command(label="Alpha", command=lambda:printSymbol("\\alpha"))
 lowerGreekMenu.add_command(label="Beta", command=lambda:printSymbol("\\beta"))
